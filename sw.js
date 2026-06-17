@@ -24,8 +24,9 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
-  // Never cache the live feed — always go to network, let the page handle failure.
-  if (url.hostname.indexOf('espn.com') !== -1) return;
+  // Only handle our own files. Cross-origin (ESPN live feed, Wikimedia photos) stays
+  // network-only — never cached/stored — so the page degrades gracefully offline.
+  if (url.origin !== location.origin) return;
 
   // Stale-while-revalidate for everything on our origin: serve cache instantly
   // (works offline), refresh in the background when online.
