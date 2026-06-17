@@ -773,4 +773,18 @@ window.addEventListener('DOMContentLoaded',()=>{
   $$('.tab').forEach(t=>t.addEventListener('click',()=>{history.replaceState(null,'','#'+t.dataset.t);}));
 });
 </script>
-</body></html>
+<script>window.addEventListener('load',function(){setTimeout(function(){
+ // pick a VISIBLE schedule card
+ var cards=[...document.querySelectorAll('#v-schedule .grid .mc')];
+ var card=cards.find(c=>c.getBoundingClientRect().width>0);
+ var out=['vw='+document.documentElement.clientWidth];
+ if(card){
+   var cr=card.getBoundingClientRect();
+   out.push('card w='+Math.round(cr.width)+' overflowHidden clips right at '+Math.round(cr.right));
+   var row=card.querySelector('.row');
+   out.push('row scrollW='+row.scrollWidth+' clientW='+row.clientWidth+(row.scrollWidth>row.clientWidth?' <-- OVERFLOWS':' OK'));
+   [...row.children].forEach(function(c){var r=c.getBoundingClientRect();out.push('  '+c.className+' w='+Math.round(r.width)+' right='+Math.round(r.right));});
+ } else out.push('no visible card');
+ var d=document.createElement('div');d.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#000;color:#0f0;font:11px monospace;padding:8px;white-space:pre-wrap;';
+ d.textContent=out.join('\n');document.body.appendChild(d);
+},600);});</script></body></html>

@@ -773,4 +773,14 @@ window.addEventListener('DOMContentLoaded',()=>{
   $$('.tab').forEach(t=>t.addEventListener('click',()=>{history.replaceState(null,'','#'+t.dataset.t);}));
 });
 </script>
-</body></html>
+<script>window.addEventListener('load',function(){setTimeout(function(){
+ var vw=document.documentElement.clientWidth, sw=document.documentElement.scrollWidth;
+ var worst=null,wmax=0;
+ document.querySelectorAll('body *').forEach(function(el){
+   var r=el.getBoundingClientRect();
+   if(r.right>vw+0.5 && r.width>wmax){wmax=r.width;worst=el;}
+ });
+ var info='viewport='+vw+' scrollWidth='+sw+' | widest-overflow: '+(worst?worst.className+' ('+Math.round(wmax)+'px, right='+Math.round(worst.getBoundingClientRect().right)+')':'none');
+ var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#ff2d78;color:#fff;font:13px monospace;padding:8px;white-space:normal;';
+ d.textContent=info;document.body.appendChild(d);
+},500);});</script></body></html>
