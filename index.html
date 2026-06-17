@@ -139,6 +139,9 @@ main{padding-top:34px;}
 #liveInd{display:none;align-items:center;gap:6px;font-size:11px;font-weight:900;color:#fff;background:var(--red);
   padding:5px 11px;border-radius:20px;letter-spacing:.5px;animation:livep 1.5s ease-in-out infinite;}
 #liveInd.on{display:inline-flex;}
+#offInd{display:none;font-size:10px;font-weight:900;color:#0a0f1f;background:var(--mut);
+  padding:5px 10px;border-radius:20px;letter-spacing:.5px;}
+#offInd.on{display:inline-block;}
 .row{display:flex;align-items:center;gap:9px;}
 .side{display:flex;align-items:center;gap:8px;flex:1;min-width:0;}
 .side.r{flex-direction:row-reverse;text-align:right;}
@@ -293,6 +296,7 @@ footer .reset{color:var(--red);cursor:pointer;font-weight:700;text-decoration:un
     <div class="hspace"></div>
     <div class="hstat"><div class="v"><span id="hPlayed">0</span>/104</div><div class="l">Played</div></div>
     <span id="liveInd"><span class="livedot"></span><span id="liveCnt">0</span> LIVE</span>
+    <span id="offInd">OFFLINE</span>
     <button class="updbtn" id="updBtn"><span class="ic">⟳</span> Update results</button>
     <div class="tzpill">ALL TIMES CT</div>
   </div>
@@ -838,6 +842,15 @@ window.addEventListener('DOMContentLoaded',()=>{
   if(!store.get('wc26_scorers')&&navigator.onLine){updateResults();} // full sync (scorers) on first open
   setInterval(pollLive,45000);                                       // auto-refresh live scores every 45s
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)pollLive();}); // refresh when tab refocused
+  // offline indicator + resync when connection returns
+  function syncOnline(){const o=$('#offInd');if(o)o.classList.toggle('on',!navigator.onLine);}
+  window.addEventListener('online',()=>{syncOnline();pollLive();});
+  window.addEventListener('offline',syncOnline);
+  syncOnline();
+  // register service worker so the app loads with no internet (hosted/https only)
+  if('serviceWorker' in navigator && location.protocol==='https:'){
+    window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+  }
   $$('.tab').forEach(t=>t.addEventListener('click',()=>{history.replaceState(null,'','#'+t.dataset.t);}));
 });
 </script>
