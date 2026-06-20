@@ -150,13 +150,10 @@ main{padding-top:34px;}
 .tn{font-size:13.5px;font-weight:700;line-height:1.05;}
 .side.win .tn{color:var(--green);font-weight:800;}
 .side.loss{opacity:.5;}
-.scorebox{cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;
-  min-width:62px;padding:5px 8px;border-radius:10px;background:#0a1024;border:1px solid var(--line);transition:.15s;}
-.scorebox:hover{border-color:var(--cyan);}
+.scorebox{display:flex;align-items:center;justify-content:center;gap:5px;
+  min-width:62px;padding:5px 8px;border-radius:10px;background:#0a1024;border:1px solid var(--line);}
 .scorebox .sc{font-size:18px;font-weight:900;}
 .scorebox .dash{color:var(--mut);}
-.scorebox.empty{font-size:10.5px;font-weight:800;color:var(--mut);letter-spacing:.3px;min-width:62px;}
-.scorebox.empty:hover{color:var(--cyan);}
 .venue{margin-top:11px;font-size:10.5px;color:var(--mut);font-weight:600;border-top:1px dashed var(--line);padding-top:8px;
   display:flex;align-items:center;gap:6px;}
 .venue b{color:#aeb9e0;font-weight:700;}
@@ -197,7 +194,7 @@ td.team .tnm{display:inline;}
 .bside{display:flex;align-items:center;gap:7px;padding:4px 0;font-size:12.5px;font-weight:700;}
 .bside.win{color:var(--green);}
 .bside .ph{color:var(--mut);font-weight:600;font-size:11px;font-style:italic;}
-.bscore{cursor:pointer;margin-left:auto;font-weight:900;font-size:13px;color:#0a1024;background:#aeb9e0;border-radius:6px;padding:1px 7px;min-width:20px;text-align:center;}
+.bscore{margin-left:auto;font-weight:900;font-size:13px;color:#0a1024;background:#aeb9e0;border-radius:6px;padding:1px 7px;min-width:20px;text-align:center;}
 .bscore.empty{background:#0a1024;color:var(--mut);font-size:10px;font-weight:800;}
 .bvenue{font-size:9.5px;color:var(--mut);margin-top:7px;font-weight:600;}
 
@@ -327,7 +324,7 @@ footer .reset{color:var(--red);cursor:pointer;font-weight:700;text-decoration:un
   </section>
 
   <section id="v-schedule" class="view">
-    <div class="secrow"><h2>Schedule</h2><span class="sub">72 group matches · tap a score to log it</span></div>
+    <div class="secrow"><h2>Schedule</h2><span class="sub">72 group matches · all times CT</span></div>
     <div class="chips" id="schedChips"><button class="chip on" data-g="all">All</button><button class="chip" data-g="A">Grp A</button><button class="chip" data-g="B">Grp B</button><button class="chip" data-g="C">Grp C</button><button class="chip" data-g="D">Grp D</button><button class="chip" data-g="E">Grp E</button><button class="chip" data-g="F">Grp F</button><button class="chip" data-g="G">Grp G</button><button class="chip" data-g="H">Grp H</button><button class="chip" data-g="I">Grp I</button><button class="chip" data-g="J">Grp J</button><button class="chip" data-g="K">Grp K</button><button class="chip" data-g="L">Grp L</button>
       <input class="search" id="schedSearch" placeholder="Search team…">
     </div>
@@ -368,20 +365,9 @@ footer .reset{color:var(--red);cursor:pointer;font-weight:700;text-decoration:un
 
 <div id="toast"></div>
 
-<div class="modal-bg" id="modal"><div class="modal">
-  <h4 id="mTitle">Edit score</h4>
-  <div class="mteams" id="mTeams"></div>
-  <div class="mbtns">
-    <button class="btn save" id="mSave">Save</button>
-    <button class="btn clear" id="mClear">Clear</button>
-    <button class="btn cancel" id="mCancel">Cancel</button>
-  </div>
-  <div class="mnote">Saved in this browser only · Enter = save · Esc = cancel</div>
-</div></div>
-
 <footer><div class="wrap">
-  Results updated through Jun 15, 2026 · <span id="lastUpd"></span> · Your edits are stored locally in this browser. <span class="reset" id="resetBtn">Reset to official results</span><br>
-  <span style="opacity:.8">“Update results” pulls finished scores live from ESPN’s public feed — no setup needed.</span><br>
+  Results updated through Jun 15, 2026 · <span id="lastUpd"></span><br>
+  <span style="opacity:.8">Scores update automatically from ESPN’s live feed — tap “Update results” to refresh now.</span><br>
   Schedule &amp; draw verified vs FIFA / Wikipedia. Flags: flagcdn. Player photos: Wikimedia Commons. Times converted to U.S. Central (CDT, UTC−5). Not affiliated with FIFA.
 </div></footer>
 
@@ -413,9 +399,6 @@ let STORAGE_OK=true;try{localStorage.setItem('wc26_t','1');localStorage.removeIt
 function userStore(){try{return JSON.parse(store.get(LS))||{}}catch(e){return {}}}
 function setUser(o){store.set(LS,JSON.stringify(o));}
 function effResult(n){const u=userStore();if(u[String(n)]!==undefined)return u[String(n)];const d=DATA.defaults[String(n)];return d?d:null;}
-function saveResult(n,h,a){const u=userStore();u[String(n)]=[h,a];setUser(u);rerender();}
-function clearResult(n){const u=userStore();u[String(n)]=null;setUser(u);rerender();}  // null = explicitly cleared
-function resetAll(){if(confirm('Reset all your edits back to the official results so far?')){store.del(LS);rerender();}}
 
 /* ---- standings ---- */
 function standings(g){
@@ -639,35 +622,7 @@ function syncUpdatedLabel(){
   if(f)f.textContent='Last synced '+d.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
 }
 
-/* ---- score modal ---- */
-let editN=null;
-function openEditor(n){
-  const m=byNum[n];editN=n;const r=effResult(n)||['',''];
-  let hName,aName;
-  if(m.stage==='group'){hName=m.home;aName=m.away;}
-  else{const s=m.label.split(' vs ');hName=resolveToken(s[0]);aName=resolveToken(s[1]);}
-  $('#mTeams').innerHTML=`
-    <div class="mteam">${fl(hName)||'<div style=\"font-size:11px;color:var(--mut)\">'+esc(m.stage==='ko'?m.label.split(' vs ')[0]:'')+'</div>'}<div class="tn">${esc(hName||'Home')}</div></div>
-    <input class="minp" id="mH" type="number" min="0" value="${r[0]}">
-    <span class="mvs">–</span>
-    <input class="minp" id="mA" type="number" min="0" value="${r[1]}">
-    <div class="mteam">${fl(aName)||'<div style=\"font-size:11px;color:var(--mut)\">'+esc(m.stage==='ko'?m.label.split(' vs ')[1]:'')+'</div>'}<div class="tn">${esc(aName||'Away')}</div></div>`;
-  $('#mTitle').textContent=(m.stage==='group'?'Group '+m.grp:m.round)+' · Match #'+n;
-  $('#modal').classList.add('show');setTimeout(()=>$('#mH').focus(),50);
-}
-function closeEditor(){$('#modal').classList.remove('show');editN=null;}
-function saveEditor(){
-  const h=$('#mH').value,a=$('#mA').value;
-  if(h===''||a===''){alert('Enter both scores (or hit Clear).');return;}
-  saveResult(editN,Math.max(0,+h),Math.max(0,+a));closeEditor();
-}
-
 /* ---- renderers ---- */
-function scoreBox(n){
-  const r=effResult(n);
-  if(r)return `<div class="scorebox" onclick="openEditor(${n})"><span class="sc">${r[0]}</span><span class="dash">–</span><span class="sc">${r[1]}</span></div>`;
-  return `<div class="scorebox empty" onclick="openEditor(${n})">＋ score</div>`;
-}
 function matchCard(m){
   const r=effResult(m.n);
   const lv=!r?liveOf(m.n):null;
@@ -676,13 +631,13 @@ function matchCard(m){
   if(r){
     top=`<span class="ftpill">FT</span>`;
     ho=r[0]>r[1]?'win':(r[0]<r[1]?'loss':'');ao=r[1]>r[0]?'win':(r[1]<r[0]?'loss':'');
-    scoreEl=`<div class="scorebox" onclick="openEditor(${m.n})"><span class="sc">${r[0]}</span><span class="dash">–</span><span class="sc">${r[1]}</span></div>`;
+    scoreEl=`<div class="scorebox"><span class="sc">${r[0]}</span><span class="dash">–</span><span class="sc">${r[1]}</span></div>`;
   }else if(lv){
     top=`<span class="livepill2"><span class="livedot"></span>${esc(lv.status)}</span>`;
     scoreEl=`<div class="scorebox live"><span class="sc">${lv.score[0]}</span><span class="dash">–</span><span class="sc">${lv.score[1]}</span></div>`;
   }else{
     top=`<span class="mtime">${m.time} <span class="tz">CT</span></span>`;
-    scoreEl=`<div class="scorebox empty" onclick="openEditor(${m.n})">＋ score</div>`;
+    scoreEl=`<span class="vs">vs</span>`;
   }
   return `<div class="mc ${lv?'islive':''}" data-n="${m.n}">
     <div class="mc-top"><span class="mnum">#${m.n}</span>
@@ -775,8 +730,8 @@ function renderBracket(){
     let cards=ms.map(m=>{
       const sides=m.label.split(' vs ');const r=effResult(m.n);
       let wName=null;if(r&&r[0]!==r[1]){const a=resolveToken(sides[0]),b=resolveToken(sides[1]);wName=r[0]>r[1]?a:b;}
-      const sb=r?`<span class="bscore" onclick="openEditor(${m.n})">${r[0]}</span>`:`<span class="bscore empty" onclick="openEditor(${m.n})">–</span>`;
-      const sb2=r?`<span class="bscore" onclick="openEditor(${m.n})">${r[1]}</span>`:`<span class="bscore empty" onclick="openEditor(${m.n})">–</span>`;
+      const sb=r?`<span class="bscore">${r[0]}</span>`:`<span class="bscore empty">–</span>`;
+      const sb2=r?`<span class="bscore">${r[1]}</span>`:`<span class="bscore empty">–</span>`;
       return `<div class="bc" style="border-left-color:${c}">
         <div class="bt">#${m.n} · ${m.dl}<span class="v">${m.time} CT</span></div>
         <div style="display:flex;align-items:center">${bracketSide(sides[0],wName)}${sb}</div>
@@ -821,7 +776,7 @@ function renderToday(){
   $('#todayHero').innerHTML=`
     <div><div class="th-date">${label.toUpperCase()} · ${dObj.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
     <div class="th-big">${upcoming.length?upcoming.length+' match'+(upcoming.length>1?'es':''):'No matches'}</div>
-    <div class="th-sub">${label==='Today'?'Tap any score to log a result':'Group stage rolls on'}</div></div>
+    <div class="th-sub">${label==='Today'?'Live scores update automatically':'Group stage rolls on'}</div></div>
     <div class="th-stats">
       <div><div class="v">${played}<span style="font-size:14px;color:var(--mut)">/104</span></div><div class="l">Played</div></div>
       <div><div class="v">${days}</div><div class="l">Days to final</div></div>
@@ -876,11 +831,6 @@ window.addEventListener('DOMContentLoaded',()=>{
     v._filter=ch.dataset.g;renderSchedule();
   });
   $('#schedSearch').oninput=e=>{v._q=e.target.value;renderSchedule();};
-  $('#mSave').onclick=saveEditor;$('#mClear').onclick=()=>{clearResult(editN);closeEditor();};
-  $('#mCancel').onclick=closeEditor;
-  $('#modal').onclick=e=>{if(e.target.id==='modal')closeEditor();};
-  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeEditor();if(e.key==='Enter'&&editN!=null)saveEditor();});
-  $('#resetBtn').onclick=resetAll;
   $('#updBtn').onclick=updateResults;
   const lv=$('#v-leaders');lv._sort='scorers';
   $$('#lbToggle .chip').forEach(ch=>ch.onclick=()=>{
