@@ -179,8 +179,13 @@ tr.q1 .pos,tr.q2 .pos{background:var(--green);color:#04231a;}
 tr.q3 .pos{background:var(--gold);color:#2a2200;}
 tr.q1,tr.q2{background:rgba(22,199,132,.06);}
 tr.q3{background:rgba(255,198,43,.05);}
-.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--mut);margin:4px 2px 18px;font-weight:600;}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--mut);margin:4px 2px 18px;font-weight:600;align-items:center;}
 .legend b{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:5px;}
+.qbadge,.ebadge{font-size:8.5px;font-weight:900;padding:2px 6px;border-radius:6px;margin-left:7px;letter-spacing:.5px;vertical-align:1px;}
+.qbadge{background:var(--green);color:#04231a;}
+.ebadge{background:#46506e;color:#c6cff2;}
+tr.elim{opacity:.5;}
+td.team .tnm{display:inline;}
 
 /* BRACKET */
 .bracket{display:flex;gap:16px;overflow-x:auto;padding-bottom:14px;}
@@ -318,6 +323,7 @@ footer .reset{color:var(--red);cursor:pointer;font-weight:700;text-decoration:un
   <section id="v-today" class="view">
     <div class="today-hero" id="todayHero"></div>
     <div id="todayList"></div>
+    <div id="yesterdayWrap"></div>
   </section>
 
   <section id="v-schedule" class="view">
@@ -333,6 +339,8 @@ footer .reset{color:var(--red);cursor:pointer;font-weight:700;text-decoration:un
     <div class="legend">
       <span><b style="background:var(--green)"></b>Top 2 — advance to Round of 32</span>
       <span><b style="background:var(--gold)"></b>3rd place — in current best-8 (provisional)</span>
+      <span><span class="qbadge" style="margin:0 5px 0 0">Q</span>clinched a top-2 spot</span>
+      <span><span class="ebadge" style="margin:0 5px 0 0">OUT</span>eliminated (can't escape 4th)</span>
     </div>
     <div class="gstack" id="groupGrid"></div>
   </section>
@@ -709,15 +717,39 @@ function renderSchedule(){
   $('#schedList').innerHTML=html;
 }
 
+// Mathematically clinched top-2 ('Q') / guaranteed last & out ('E'), by enumerating remaining group games.
+function groupStatus(g){
+  const teams=DATA.groups[g];
+  const ms=DATA.matches.filter(m=>m.stage==='group'&&m.grp===g);
+  const base={};teams.forEach(t=>base[t]=0);const rem=[];
+  ms.forEach(m=>{const r=effResult(m.n);if(r){const[h,a]=r;
+    if(h>a)base[m.home]+=3;else if(h<a)base[m.away]+=3;else{base[m.home]++;base[m.away]++;}}else rem.push(m);});
+  const n=Math.min(rem.length,8),total=Math.pow(3,n);
+  const st={};teams.forEach(t=>st[t]={q:true,e:true});
+  for(let mask=0;mask<total;mask++){
+    const pts=Object.assign({},base);let mm=mask;
+    for(let i=0;i<n;i++){const o=mm%3;mm=Math.floor(mm/3);const m=rem[i];
+      if(o===0)pts[m.home]+=3;else if(o===1)pts[m.away]+=3;else{pts[m.home]++;pts[m.away]++;}}
+    teams.forEach(X=>{let strict=0,eq=0;
+      teams.forEach(Y=>{if(Y===X)return;if(pts[Y]>pts[X])strict++;else if(pts[Y]===pts[X])eq++;});
+      if(strict+eq>1)st[X].q=false;   // could fall out of top-2 in this scenario (ties adverse)
+      if(strict<3)st[X].e=false;});   // can still escape 4th in this scenario
+  }
+  const out={};teams.forEach(t=>out[t]=st[t].q?'Q':(st[t].e?'E':''));
+  return out;
+}
 function renderGroups(){
   const thirds=bestThirds();
   let html='';
   Object.keys(DATA.groups).forEach(g=>{
-    const rows=standings(g);const c=DATA.groupColors[g];
+    const rows=standings(g);const c=DATA.groupColors[g];const gs=groupStatus(g);
     let trs=rows.map((r,i)=>{
       let cls=i===0?'q1':i===1?'q2':(i===2&&thirds.has(r.t)?'q3':'');
+      const stt=gs[r.t];
+      const badge=stt==='Q'?'<span class="qbadge">Q</span>':(stt==='E'?'<span class="ebadge">OUT</span>':'');
+      if(stt==='E')cls='elim';
       return `<tr class="${cls}"><td><span class="pos">${i+1}</span></td>
-        <td class="team">${fl(r.t,'fl sm')}${esc(r.t)}</td>
+        <td class="team">${fl(r.t,'fl sm')}<span class="tnm">${esc(r.t)}</span>${badge}</td>
         <td>${r.pl}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td>
         <td>${r.gf}</td><td>${r.ga}</td><td>${r.gd>0?'+':''}${r.gd}</td><td class="pts">${r.pts}</td></tr>`;
     }).join('');
@@ -799,6 +831,17 @@ function renderToday(){
     html='<div class="grid">'+upcoming.map(m=>m.stage==='group'?matchCard(m):koMini(m)).join('')+'</div>';
   }else{html='<div class="empty-note">No matches scheduled. Check the Schedule tab.</div>';}
   $('#todayList').innerHTML=html;
+  // ---- Yesterday's games ----
+  const yd=new Date(new Date(today+'T12:00:00').getTime()-86400000);
+  const yISO=yd.getFullYear()+'-'+String(yd.getMonth()+1).padStart(2,'0')+'-'+String(yd.getDate()).padStart(2,'0');
+  const yest=all.filter(m=>m.dateISO===yISO);
+  let yhtml='';
+  if(yest.length){
+    yhtml=`<div class="dayhead" style="margin-top:26px">Yesterday · ${yd.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}`
+      +` <span class="cnt">${yest.filter(m=>effResult(m.n)).length}/${yest.length} played</span></div>`
+      +'<div class="grid">'+yest.map(m=>m.stage==='group'?matchCard(m):koMini(m)).join('')+'</div>';
+  }
+  $('#yesterdayWrap').innerHTML=yhtml;
 }
 function koMini(m){
   const r=effResult(m.n);const lv=!r?liveOf(m.n):null;const c=DATA.roundColors[m.round];
