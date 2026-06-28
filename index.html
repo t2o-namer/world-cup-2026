@@ -442,11 +442,16 @@ function resolveToken(tok){
 }
 function matchOutcome(n,which){
   const m=byNum[n];if(!m||m.stage!=='ko')return null;
-  const sides=m.label.split(' vs ');const a=resolveToken(sides[0]),b=resolveToken(sides[1]);
+  const sd=koSides(m);const a=sd[0],b=sd[1];
   const r=effResult(n);if(!a||!b||!r)return null;
   if(r[0]===r[1])return null;
   const aWin=r[0]>r[1];
   return which==='W'?(aWin?a:b):(aWin?b:a);
+}
+// Two sides of a knockout match: real ESPN teams if known, else resolved from group standings.
+function koSides(m){
+  const kt=koTeamsOf(m.n);if(kt)return kt;
+  const s=m.label.split(' vs ');return [resolveToken(s[0]),resolveToken(s[1])];
 }
 
 /* ---- leaderboard (all teams ranked) ---- */
@@ -524,6 +529,16 @@ const ALIAS={}; // espn-name(simplified) -> canonical
 const CANON={}; Object.keys(DATA.flags).forEach(t=>CANON[simplify(t)]=t);
 function resolveTeam(name){const s=simplify(name);return ALIAS[s]||CANON[s]||null;}
 
+// Knockout actual matchups, captured from ESPN by venue+date (overrides placeholder labels).
+function koTeamsStore(){try{return JSON.parse(store.get('wc26_koteams'))||{}}catch(e){return {}}}
+function koTeamsOf(n){return koTeamsStore()[String(n)]||null;}
+function canonVenue(v){let s=(v||'').toLowerCase().replace(/[^a-z]/g,'');
+  if(s.indexOf('azteca')>=0||s.indexOf('banorte')>=0)return 'banorte';
+  if(s.indexOf('arrowhead')>=0)return 'arrowhead';return s;}
+function ctDateISO(iso){const u=new Date(iso),c=new Date(u.getTime()-5*3600000);
+  return c.getUTCFullYear()+'-'+String(c.getUTCMonth()+1).padStart(2,'0')+'-'+String(c.getUTCDate()).padStart(2,'0');}
+const KOIDX={};DATA.matches.filter(m=>m.stage==='ko').forEach(m=>{KOIDX[canonVenue(m.stadium)+'|'+m.dateISO]=m.n;});
+
 // build pair index: {sortedPairKey -> {n, home, away}} for group + resolvable KO matches
 function pairKey(a,b){return [a,b].sort().join('|');}
 function buildPairIndex(){
@@ -555,6 +570,7 @@ function recentDates(){             // today + yesterday (covers all in-play + j
 // Parse ESPN events: write FINAL results to storage, collect LIVE games, (optionally) rebuild scorers.
 function ingest(dataArray, doScorers){
   const idx=buildPairIndex();const u=userStore();const scorers=doScorers?{}:null;const live={};
+  const ko=koTeamsStore();
   let added=0,updated=0;
   dataArray.forEach(data=>{(data.events||[]).forEach(e=>{
     try{
@@ -562,10 +578,19 @@ function ingest(dataArray, doScorers){
       const comp=e.competitions[0];const cs=comp.competitors;
       const H=cs.find(c=>c.homeAway==='home'),A=cs.find(c=>c.homeAway==='away');
       const a=resolveTeam(H.team.displayName||H.team.name),b=resolveTeam(A.team.displayName||A.team.name);
-      if(!a||!b)return;
-      const hit=idx[pairKey(a,b)];if(!hit)return;
+      // Map the event to one of our fixtures: group by team-pair, knockout by venue+date.
+      let hit=null;
+      if(a&&b) hit=idx[pairKey(a,b)];
+      if(!hit){
+        const kn=KOIDX[canonVenue(comp.venue&&comp.venue.fullName)+'|'+ctDateISO(e.date)];
+        if(kn){
+          hit={n:kn,home:a,away:b,ko:true};
+          if(a&&b) ko[String(kn)]=[a,b];        // capture real knockout matchup
+        }
+      }
+      if(!hit)return;
       const hs=parseInt(H.score),as=parseInt(A.score);if(isNaN(hs)||isNaN(as))return;
-      const val=hit.home===a?[hs,as]:[as,hs];
+      const val=(hit.home===a)?[hs,as]:[as,hs];
       if(st.state==='in'){
         live[hit.n]={score:val,status:(st.shortDetail||(e.status&&e.status.displayClock)||'LIVE')};
       }else if(st.state==='post'&&st.completed){
@@ -586,6 +611,7 @@ function ingest(dataArray, doScorers){
     }catch(err){}
   });});
   setUser(u);
+  store.set('wc26_koteams',JSON.stringify(ko));
   if(scorers)store.set('wc26_scorers',JSON.stringify(Object.values(scorers)));
   store.set('wc26_last_update',new Date().toISOString());
   return {added,updated,live,scorerCount:scorers?Object.values(scorers).length:null};
@@ -755,10 +781,9 @@ function renderGroups(){
   $('#groupGrid').innerHTML=html;
 }
 
-function bracketSide(tok,winnerName){
-  const t=resolveToken(tok);
-  const w=t&&winnerName&&t===winnerName?'win':'';
-  if(t)return `<div class="bside ${w}">${fl(t,'fl sm')}<span>${esc(t)}</span></div>`;
+function bracketSide(team,tok,winnerName){
+  const w=team&&winnerName&&team===winnerName?'win':'';
+  if(team)return `<div class="bside ${w}">${fl(team,'fl sm')}<span>${esc(team)}</span></div>`;
   return `<div class="bside"><span class="ph">${esc(tok)}</span></div>`;
 }
 function renderBracket(){
@@ -768,14 +793,14 @@ function renderBracket(){
     const ms=DATA.matches.filter(m=>m.stage==='ko'&&m.round===rnd);
     const c=DATA.roundColors[rnd];
     let cards=ms.map(m=>{
-      const sides=m.label.split(' vs ');const r=effResult(m.n);
-      let wName=null;if(r&&r[0]!==r[1]){const a=resolveToken(sides[0]),b=resolveToken(sides[1]);wName=r[0]>r[1]?a:b;}
+      const lab=m.label.split(' vs ');const sd=koSides(m);const r=effResult(m.n);
+      let wName=null;if(r&&r[0]!==r[1]){wName=r[0]>r[1]?sd[0]:sd[1];}
       const sb=r?`<span class="bscore">${r[0]}</span>`:`<span class="bscore empty">–</span>`;
       const sb2=r?`<span class="bscore">${r[1]}</span>`:`<span class="bscore empty">–</span>`;
       return `<div class="bc" style="border-left-color:${c}">
         <div class="bt">#${m.n} · ${m.dl}<span class="v">${m.time} CT</span></div>
-        <div style="display:flex;align-items:center">${bracketSide(sides[0],wName)}${sb}</div>
-        <div style="display:flex;align-items:center">${bracketSide(sides[1],wName)}${sb2}</div>
+        <div style="display:flex;align-items:center">${bracketSide(sd[0],lab[0],wName)}${sb}</div>
+        <div style="display:flex;align-items:center">${bracketSide(sd[1],lab[1],wName)}${sb2}</div>
         <div class="bvenue">${esc(m.stadium)} · ${esc(m.city)}</div>
       </div>`;
     }).join('');
@@ -840,13 +865,28 @@ function renderToday(){
 }
 function koMini(m){
   const r=effResult(m.n);const lv=!r?liveOf(m.n):null;const c=DATA.roundColors[m.round];
-  let top;
-  if(r)top=`<span class="ftpill">FT</span> <span class="scorebox" style="margin-left:6px"><span class="sc">${r[0]}</span><span class="dash">–</span><span class="sc">${r[1]}</span></span>`;
-  else if(lv)top=`<span class="livepill2"><span class="livedot"></span>${esc(lv.status)}</span> <span class="scorebox live" style="margin-left:6px"><span class="sc">${lv.score[0]}</span><span class="dash">–</span><span class="sc">${lv.score[1]}</span></span>`;
+  const lab=m.label.split(' vs ');const sd=koSides(m);
+  let top,body;
+  if(r)top=`<span class="ftpill">FT</span>`;
+  else if(lv)top=`<span class="livepill2"><span class="livedot"></span>${esc(lv.status)}</span>`;
   else top=`<span class="mtime">${m.time} <span class="tz">CT</span></span>`;
+  if(sd[0]||sd[1]){
+    // real teams known — render a proper matchup row
+    let scoreEl;
+    if(r){const ho=r[0]>r[1]?'win':(r[0]<r[1]?'loss':''),ao=r[1]>r[0]?'win':(r[1]<r[0]?'loss':'');
+      scoreEl=`<div class="scorebox"><span class="sc">${r[0]}</span><span class="dash">–</span><span class="sc">${r[1]}</span></div>`;
+      var H=ho,Aa=ao;}
+    else if(lv){scoreEl=`<div class="scorebox live"><span class="sc">${lv.score[0]}</span><span class="dash">–</span><span class="sc">${lv.score[1]}</span></div>`;var H='',Aa='';}
+    else {scoreEl=`<span class="vs">vs</span>`;var H='',Aa='';}
+    const sideHTML=(t,tok,cls)=>t?`<div class="side ${cls}">${fl(t)}<span class="tn">${esc(t)}</span></div>`
+                                 :`<div class="side ${cls}"><span class="tn" style="color:var(--mut);font-weight:600;font-size:11px">${esc(tok)}</span></div>`;
+    body=`<div class="row">${sideHTML(sd[0],lab[0],H)}${scoreEl}${sideHTML(sd[1],lab[1],'r '+Aa)}</div>`;
+  }else{
+    body=`<div class="ko-label">${esc(m.label)}</div>`;
+  }
   return `<div class="mc ${lv?'islive':''}"><div class="mc-top"><span class="mnum">#${m.n}</span>
     <span class="badge" style="background:${c};color:#0a0f1f">${esc(m.round)}</span>${top}</div>
-    <div class="ko-label">${esc(m.label)}</div>
+    ${body}
     <div class="venue"><b>${esc(m.stadium)}</b> · ${esc(m.city)}</div></div>`;
 }
 
@@ -882,8 +922,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   const h=location.hash.slice(1);
   renderPlayers();rerender();
   showTab(h&&document.querySelector('.tab[data-t="'+h+'"]')?h:'today');
-  if(navigator.onLine){pollLive();}                                  // pull live scores + finals on open
-  if(!store.get('wc26_scorers')&&navigator.onLine){updateResults();} // full sync (scorers) on first open
+  if(navigator.onLine){updateResults();}                             // full sync on open: results, scorers, knockout teams
   setInterval(pollLive,45000);                                       // auto-refresh live scores every 45s
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)pollLive();}); // refresh when tab refocused
   // offline indicator + resync when connection returns
