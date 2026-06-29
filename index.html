@@ -724,7 +724,7 @@ function renderSchedule(){
     if(filt!=='all'&&m.grp!==filt)return false;
     if(q&&!(m.home.toLowerCase().includes(q)||m.away.toLowerCase().includes(q)))return false;
     return true;
-  });
+  }).sort(byKickoff);
   let html='';let cur=null;
   list.forEach(m=>{
     if(m.dl!==cur){if(cur!==null)html+='</div>';cur=m.dl;
@@ -824,16 +824,18 @@ function renderPlayers(){
 }
 
 function todayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function timeMin(t){const m=(t||'').match(/(\d+):(\d+)\s*(AM|PM)/);if(!m)return 0;let h=+m[1];if(m[3]==='PM'&&h!==12)h+=12;if(m[3]==='AM'&&h===12)h=0;return h*60+(+m[2]);}
+const byKickoff=(a,b)=>a.dateISO.localeCompare(b.dateISO)||timeMin(a.time)-timeMin(b.time)||a.n-b.n;
 function renderToday(){
   const today=todayISO();
   const all=DATA.matches;
   const played=all.filter(m=>effResult(m.n)).length;
-  const todays=all.filter(m=>m.dateISO===today);
+  const todays=all.filter(m=>m.dateISO===today).sort(byKickoff);
   // next upcoming day with matches if none today
   let upcoming=todays, label='Today';
   if(!todays.length){
     const future=all.filter(m=>m.dateISO>today).sort((a,b)=>a.dateISO.localeCompare(b.dateISO));
-    if(future.length){const nd=future[0].dateISO;upcoming=all.filter(m=>m.dateISO===nd);label='Next matchday';}
+    if(future.length){const nd=future[0].dateISO;upcoming=all.filter(m=>m.dateISO===nd).sort(byKickoff);label='Next matchday';}
   }
   const finalD=new Date('2026-07-19T00:00:00');const now=new Date();
   const days=Math.max(0,Math.ceil((finalD-now)/86400000));
@@ -854,7 +856,7 @@ function renderToday(){
   // ---- Yesterday's games ----
   const yd=new Date(new Date(today+'T12:00:00').getTime()-86400000);
   const yISO=yd.getFullYear()+'-'+String(yd.getMonth()+1).padStart(2,'0')+'-'+String(yd.getDate()).padStart(2,'0');
-  const yest=all.filter(m=>m.dateISO===yISO);
+  const yest=all.filter(m=>m.dateISO===yISO).sort(byKickoff);
   let yhtml='';
   if(yest.length){
     yhtml=`<div class="dayhead" style="margin-top:26px">Yesterday · ${yd.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}`
