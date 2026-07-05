@@ -212,10 +212,10 @@ td.team .tnm{display:inline;}
 .bvenue{font-size:9.5px;color:var(--mut);margin-top:7px;font-weight:600;}
 
 /* TREE BRACKET (classic two-sided) */
-.bt{display:flex;height:840px;min-width:1560px;align-items:stretch;padding:6px 4px;}
-.bt .rnd{width:174px;flex:0 0 174px;height:840px;display:flex;flex-direction:column;}
-.bt .rnd.centre{flex:0 0 210px;width:210px;justify-content:center;}
-.bt .slot{flex:1 1 0;min-height:0;display:flex;align-items:center;justify-content:center;position:relative;}
+.ktree{display:flex;height:840px;min-width:1560px;align-items:stretch;padding:6px 4px;}
+.ktree .rnd{width:174px;flex:0 0 174px;height:840px;display:flex;flex-direction:column;}
+.ktree .rnd.centre{flex:0 0 210px;width:210px;justify-content:center;}
+.ktree .slot{flex:1 1 0;min-height:0;display:flex;align-items:center;justify-content:center;position:relative;}
 .bkm{width:150px;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.3);}
 .bkm.live{border-color:var(--red);box-shadow:0 0 0 1px rgba(255,77,94,.4);}
 .bkrow{display:flex;align-items:center;gap:6px;padding:5px 8px;font-size:11.5px;font-weight:700;line-height:1.1;}
@@ -229,18 +229,18 @@ td.team .tnm{display:inline;}
 .bkp{color:var(--gold);font-size:9px;font-weight:800;margin-left:3px;}
 .bksc{font-weight:900;font-size:12px;min-width:12px;text-align:right;}
 /* connectors — left half converges right */
-.bt .rnd.cl:not(.fl) .slot::before{content:'';position:absolute;left:calc(50% + 75px);width:14px;height:2px;top:calc(50% - 1px);background:var(--line);}
-.bt .rnd.cl:not(.fl) .slot::after{content:'';position:absolute;left:calc(50% + 89px);width:10px;border-right:2px solid var(--line);}
-.bt .rnd.cl:not(.fl) .slot:nth-child(odd)::after{top:50%;height:50%;border-bottom:2px solid var(--line);}
-.bt .rnd.cl:not(.fl) .slot:nth-child(even)::after{top:0;height:50%;border-top:2px solid var(--line);}
+.ktree .rnd.cl:not(.fl) .slot::before{content:'';position:absolute;left:calc(50% + 75px);width:14px;height:2px;top:calc(50% - 1px);background:var(--line);}
+.ktree .rnd.cl:not(.fl) .slot::after{content:'';position:absolute;left:calc(50% + 89px);width:10px;border-right:2px solid var(--line);}
+.ktree .rnd.cl:not(.fl) .slot:nth-child(odd)::after{top:50%;height:50%;border-bottom:2px solid var(--line);}
+.ktree .rnd.cl:not(.fl) .slot:nth-child(even)::after{top:0;height:50%;border-top:2px solid var(--line);}
 /* connectors — right half converges left */
-.bt .rnd.cr:not(.fr) .slot::before{content:'';position:absolute;left:calc(50% - 89px);width:14px;height:2px;top:calc(50% - 1px);background:var(--line);}
-.bt .rnd.cr:not(.fr) .slot::after{content:'';position:absolute;left:calc(50% - 99px);width:10px;border-right:2px solid var(--line);}
-.bt .rnd.cr:not(.fr) .slot:nth-child(odd)::after{top:50%;height:50%;border-bottom:2px solid var(--line);}
-.bt .rnd.cr:not(.fr) .slot:nth-child(even)::after{top:0;height:50%;border-top:2px solid var(--line);}
+.ktree .rnd.cr:not(.fr) .slot::before{content:'';position:absolute;left:calc(50% - 89px);width:14px;height:2px;top:calc(50% - 1px);background:var(--line);}
+.ktree .rnd.cr:not(.fr) .slot::after{content:'';position:absolute;left:calc(50% - 99px);width:10px;border-right:2px solid var(--line);}
+.ktree .rnd.cr:not(.fr) .slot:nth-child(odd)::after{top:50%;height:50%;border-bottom:2px solid var(--line);}
+.ktree .rnd.cr:not(.fr) .slot:nth-child(even)::after{top:0;height:50%;border-top:2px solid var(--line);}
 /* semifinal → final stubs */
-.bt .rnd.fl .slot::after{content:'';position:absolute;left:calc(50% + 75px);top:calc(50% - 1px);width:42px;height:2px;background:var(--line);}
-.bt .rnd.fr .slot::after{content:'';position:absolute;right:calc(50% + 75px);top:calc(50% - 1px);width:42px;height:2px;background:var(--line);}
+.ktree .rnd.fl .slot::after{content:'';position:absolute;left:calc(50% + 75px);top:calc(50% - 1px);width:42px;height:2px;background:var(--line);}
+.ktree .rnd.fr .slot::after{content:'';position:absolute;right:calc(50% + 75px);top:calc(50% - 1px);width:42px;height:2px;background:var(--line);}
 /* final centrepiece */
 .bkfinal{width:194px;text-align:center;}
 .bkflabel{font-size:11px;font-weight:900;letter-spacing:4px;color:var(--gold);margin-bottom:9px;}
@@ -887,7 +887,7 @@ function renderBracketTree(){
       <div class="bkflabel">FINAL</div>${bkMatch(104)}
       <div class="bkchamp ${champ?'has':''}">${champ?fl(champ,'bkf')+'<span>'+esc(champ)+'</span>':'CHAMPION'}</div>
     </div></div></div>`;
-  const html='<div class="bt">'
+  const html='<div class="ktree">'
     +bkCol(L32,'cl')+bkCol(L16,'cl')+bkCol(LQF,'cl')+bkCol(LSF,'cl fl')
     +centre
     +bkCol(RSF,'cr fr')+bkCol(RQF,'cr')+bkCol(R16,'cr')+bkCol(R32,'cr')
