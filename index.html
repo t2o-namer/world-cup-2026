@@ -197,7 +197,8 @@ tr.elim{opacity:.5;}
 td.team .tnm{display:inline;}
 
 /* BRACKET */
-.bracket{display:flex;gap:16px;overflow-x:auto;padding-bottom:14px;}
+.bracket{overflow-x:auto;padding-bottom:14px;}
+.bracket.cols{display:flex;gap:16px;}
 .bcol{min-width:240px;flex-shrink:0;}
 .bcol h3{font-size:12px;font-weight:900;letter-spacing:1px;text-transform:uppercase;margin-bottom:11px;padding-left:3px;}
 .bc{background:var(--card);border:1px solid var(--line);border-left:4px solid;border-radius:11px;padding:10px 12px;margin-bottom:10px;}
@@ -209,6 +210,46 @@ td.team .tnm{display:inline;}
 .bscore{margin-left:auto;font-weight:900;font-size:13px;color:#0a1024;background:#aeb9e0;border-radius:6px;padding:1px 7px;min-width:20px;text-align:center;}
 .bscore.empty{background:#0a1024;color:var(--mut);font-size:10px;font-weight:800;}
 .bvenue{font-size:9.5px;color:var(--mut);margin-top:7px;font-weight:600;}
+
+/* TREE BRACKET (classic two-sided) */
+.bt{display:flex;height:840px;min-width:1560px;align-items:stretch;padding:6px 4px;}
+.bt .rnd{width:174px;flex:0 0 174px;height:840px;display:flex;flex-direction:column;}
+.bt .rnd.centre{flex:0 0 210px;width:210px;justify-content:center;}
+.bt .slot{flex:1 1 0;min-height:0;display:flex;align-items:center;justify-content:center;position:relative;}
+.bkm{width:150px;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.3);}
+.bkm.live{border-color:var(--red);box-shadow:0 0 0 1px rgba(255,77,94,.4);}
+.bkrow{display:flex;align-items:center;gap:6px;padding:5px 8px;font-size:11.5px;font-weight:700;line-height:1.1;}
+.bkrow+.bkrow{border-top:1px solid var(--line);}
+.bkrow.win{background:rgba(22,199,132,.13);color:var(--green);font-weight:800;}
+.bkrow.lose{opacity:.5;}
+.bkf{width:20px;height:14px;border-radius:2px;object-fit:cover;flex-shrink:0;box-shadow:0 1px 2px rgba(0,0,0,.45);}
+.bkf.ph{background:#26315c;}
+.bknm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bktbd{color:var(--mut);font-weight:600;font-style:italic;font-size:10px;}
+.bkp{color:var(--gold);font-size:9px;font-weight:800;margin-left:3px;}
+.bksc{font-weight:900;font-size:12px;min-width:12px;text-align:right;}
+/* connectors — left half converges right */
+.bt .rnd.cl:not(.fl) .slot::before{content:'';position:absolute;left:calc(50% + 75px);width:14px;height:2px;top:calc(50% - 1px);background:var(--line);}
+.bt .rnd.cl:not(.fl) .slot::after{content:'';position:absolute;left:calc(50% + 89px);width:10px;border-right:2px solid var(--line);}
+.bt .rnd.cl:not(.fl) .slot:nth-child(odd)::after{top:50%;height:50%;border-bottom:2px solid var(--line);}
+.bt .rnd.cl:not(.fl) .slot:nth-child(even)::after{top:0;height:50%;border-top:2px solid var(--line);}
+/* connectors — right half converges left */
+.bt .rnd.cr:not(.fr) .slot::before{content:'';position:absolute;left:calc(50% - 89px);width:14px;height:2px;top:calc(50% - 1px);background:var(--line);}
+.bt .rnd.cr:not(.fr) .slot::after{content:'';position:absolute;left:calc(50% - 99px);width:10px;border-right:2px solid var(--line);}
+.bt .rnd.cr:not(.fr) .slot:nth-child(odd)::after{top:50%;height:50%;border-bottom:2px solid var(--line);}
+.bt .rnd.cr:not(.fr) .slot:nth-child(even)::after{top:0;height:50%;border-top:2px solid var(--line);}
+/* semifinal → final stubs */
+.bt .rnd.fl .slot::after{content:'';position:absolute;left:calc(50% + 75px);top:calc(50% - 1px);width:42px;height:2px;background:var(--line);}
+.bt .rnd.fr .slot::after{content:'';position:absolute;right:calc(50% + 75px);top:calc(50% - 1px);width:42px;height:2px;background:var(--line);}
+/* final centrepiece */
+.bkfinal{width:194px;text-align:center;}
+.bkflabel{font-size:11px;font-weight:900;letter-spacing:4px;color:var(--gold);margin-bottom:9px;}
+.bkfinal .bkm{width:194px;margin:0 auto;border-color:var(--gold);box-shadow:0 0 18px rgba(255,198,43,.25);}
+.bkchamp{margin-top:13px;padding:11px;border-radius:11px;font-size:12px;font-weight:900;letter-spacing:3px;color:var(--mut);
+  background:linear-gradient(135deg,rgba(255,198,43,.12),rgba(255,45,120,.08));border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;gap:9px;}
+.bkchamp.has{color:var(--gold);border-color:var(--gold);letter-spacing:.5px;font-size:14px;box-shadow:0 0 18px rgba(255,198,43,.25);}
+.bkchamp .bkf{width:28px;height:19px;}
 
 /* PLAYERS */
 .proster{margin-bottom:18px;}
@@ -366,7 +407,11 @@ footer .reset{color:var(--red);cursor:pointer;font-weight:700;text-decoration:un
   </section>
 
   <section id="v-bracket" class="view">
-    <div class="secrow"><h2>Knockout Bracket</h2><span class="sub">teams fill in automatically as you enter results →</span></div>
+    <div class="secrow"><h2>Knockout Bracket</h2><span class="sub">teams &amp; results fill in automatically from the live feed</span></div>
+    <div class="chips" id="bkToggle">
+      <button class="chip on" data-view="tree">Bracket</button>
+      <button class="chip" data-view="cols">By round</button>
+    </div>
     <div class="bracket" id="bracketWrap"></div>
   </section>
 
@@ -810,6 +855,46 @@ function bracketSide(team,tok,winnerName){
   return `<div class="bside"><span class="ph">${esc(tok)}</span></div>`;
 }
 function renderBracket(){
+  const v=$('#v-bracket');const mode=v._view||'tree';
+  const w=$('#bracketWrap');
+  w.classList.toggle('cols',mode==='cols');
+  w.classList.toggle('tree',mode==='tree');
+  if(mode==='tree')renderBracketTree(); else renderBracketColumns();
+}
+// ---- classic two-sided converging bracket ----
+const BK_SHORT={'Bosnia and Herzegovina':'Bosnia','United States':'USA','South Africa':'S. Africa','South Korea':'S. Korea','New Zealand':'N. Zealand','Czech Republic':'Czechia','Saudi Arabia':'Saudi Arabia'};
+const bkShort=t=>BK_SHORT[t]||t;
+function bkMatch(n){
+  const m=byNum[n];if(!m)return '<div class="bkm"></div>';
+  const lab=m.label.split(' vs ');const sd=koSides(m);const r=effResult(m.n);const lv=!r?liveOf(m.n):null;
+  const wi=koWinIdx(m.n,r);const p=r?penOf(m.n):null;
+  const row=(i)=>{
+    const t=sd[i];const sc=r?r[i]:(lv?lv.score[i]:'');
+    const win=wi===i?'win':(wi!==null?'lose':'');
+    const flag=t?fl(t,'bkf'):'<span class="bkf ph"></span>';
+    const nm=t?esc(bkShort(t)):`<span class="bktbd">${esc(lab[i]||'—')}</span>`;
+    const pen=(p&&wi===i)?`<span class="bkp">(${p[i]})</span>`:'';
+    return `<div class="bkrow ${win}">${flag}<span class="bknm">${nm}${pen}</span><span class="bksc">${sc}</span></div>`;
+  };
+  return `<div class="bkm ${lv?'live':''}">${row(0)}${row(1)}</div>`;
+}
+function bkCol(nums,cls){return `<div class="rnd ${cls}">`+nums.map(n=>`<div class="slot">${bkMatch(n)}</div>`).join('')+'</div>';}
+function renderBracketTree(){
+  const L32=[74,77,73,75,83,84,81,82],L16=[89,90,93,94],LQF=[97,98],LSF=[101];
+  const R32=[76,78,79,80,86,88,85,87],R16=[91,92,95,96],RQF=[99,100],RSF=[102];
+  const champ=matchOutcome(104,'W');
+  const centre=`<div class="rnd centre"><div class="slot"><div class="bkfinal">
+      <div class="bkflabel">FINAL</div>${bkMatch(104)}
+      <div class="bkchamp ${champ?'has':''}">${champ?fl(champ,'bkf')+'<span>'+esc(champ)+'</span>':'CHAMPION'}</div>
+    </div></div></div>`;
+  const html='<div class="bt">'
+    +bkCol(L32,'cl')+bkCol(L16,'cl')+bkCol(LQF,'cl')+bkCol(LSF,'cl fl')
+    +centre
+    +bkCol(RSF,'cr fr')+bkCol(RQF,'cr')+bkCol(R16,'cr')+bkCol(R32,'cr')
+    +'</div>';
+  $('#bracketWrap').innerHTML=html;
+}
+function renderBracketColumns(){
   const rounds=["Round of 32","Round of 16","Quarter-final","Semi-final","Third-place play-off","Final"];
   let html='';
   rounds.forEach(rnd=>{
@@ -947,6 +1032,11 @@ window.addEventListener('DOMContentLoaded',()=>{
   $$('#lbToggle .chip').forEach(ch=>ch.onclick=()=>{
     $$('#lbToggle .chip').forEach(c=>c.classList.remove('on'));ch.classList.add('on');
     lv._sort=ch.dataset.sort;renderLeaderboard();
+  });
+  const bv=$('#v-bracket');bv._view='tree';
+  $$('#bkToggle .chip').forEach(ch=>ch.onclick=()=>{
+    $$('#bkToggle .chip').forEach(c=>c.classList.remove('on'));ch.classList.add('on');
+    bv._view=ch.dataset.view;renderBracket();
   });
   syncUpdatedLabel();
   if(!STORAGE_OK){const f=$('#lastUpd');if(f)f.innerHTML='<span style="color:var(--gold)">Read-only here — score edits won’t save (open over http / Safari to persist)</span>';}
