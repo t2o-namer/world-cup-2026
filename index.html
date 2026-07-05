@@ -163,6 +163,9 @@ main{padding-top:34px;}
   min-width:62px;padding:5px 8px;border-radius:10px;background:#0a1024;border:1px solid var(--line);}
 .scorebox .sc{font-size:18px;font-weight:900;}
 .scorebox .dash{color:var(--mut);}
+.scorewrap{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.penline{font-size:9px;font-weight:800;color:var(--gold);letter-spacing:.3px;white-space:nowrap;}
+.bpens{font-size:9px;font-weight:800;color:var(--gold);text-align:center;margin-top:4px;letter-spacing:.2px;}
 .venue{margin-top:11px;font-size:10.5px;color:var(--mut);font-weight:600;border-top:1px dashed var(--line);padding-top:8px;
   display:flex;align-items:center;gap:6px;}
 .venue b{color:#aeb9e0;font-weight:700;}
@@ -440,12 +443,21 @@ function resolveToken(tok){
   if(m=tok.match(/^Loser M(\d+)$/)) return matchOutcome(+m[1],'L');
   return null; // 3rd-place placeholder etc.
 }
+// Penalty shootout scores captured from ESPN (knockout ties level after ET) -> [homePens, awayPens].
+function penStore(){try{return JSON.parse(store.get('wc26_pens'))||{}}catch(e){return {}}}
+function penOf(n){return penStore()[String(n)]||null;}
+// Winner side index (0=home,1=away) for a knockout result, using penalties when level. null if undecided.
+function koWinIdx(n,r){
+  if(!r)return null;
+  if(r[0]>r[1])return 0; if(r[1]>r[0])return 1;
+  const p=penOf(n); if(!p)return null; return p[0]>p[1]?0:1;
+}
 function matchOutcome(n,which){
   const m=byNum[n];if(!m||m.stage!=='ko')return null;
   const sd=koSides(m);const a=sd[0],b=sd[1];
   const r=effResult(n);if(!a||!b||!r)return null;
-  if(r[0]===r[1])return null;
-  const aWin=r[0]>r[1];
+  const wi=koWinIdx(n,r);if(wi===null)return null;
+  const aWin=(wi===0);
   return which==='W'?(aWin?a:b):(aWin?b:a);
 }
 // Two sides of a knockout match: real ESPN teams if known, else resolved from group standings.
@@ -570,7 +582,7 @@ function recentDates(){             // today + yesterday (covers all in-play + j
 // Parse ESPN events: write FINAL results to storage, collect LIVE games, (optionally) rebuild scorers.
 function ingest(dataArray, doScorers){
   const idx=buildPairIndex();const u=userStore();const scorers=doScorers?{}:null;const live={};
-  const ko=koTeamsStore();
+  const ko=koTeamsStore();const pens=penStore();
   let added=0,updated=0;
   dataArray.forEach(data=>{(data.events||[]).forEach(e=>{
     try{
@@ -597,6 +609,11 @@ function ingest(dataArray, doScorers){
         const prev=effResult(hit.n);
         if(!prev){added++;u[String(hit.n)]=val;}
         else if(prev[0]!==val[0]||prev[1]!==val[1]){updated++;u[String(hit.n)]=val;}
+        // penalty shootout (knockout tie level after ET) -> store oriented to our home/away
+        const shH=H.shootoutScore,shA=A.shootoutScore;
+        if(shH!=null&&shA!=null&&shH!==''&&shA!==''){
+          pens[String(hit.n)]=(hit.home===a)?[parseInt(shH),parseInt(shA)]:[parseInt(shA),parseInt(shH)];
+        }
         if(scorers){
           const teamMap={};cs.forEach(c=>teamMap[c.team.id]=resolveTeam(c.team.displayName||c.team.name));
           (comp.details||[]).forEach(d=>{
@@ -612,6 +629,7 @@ function ingest(dataArray, doScorers){
   });});
   setUser(u);
   store.set('wc26_koteams',JSON.stringify(ko));
+  store.set('wc26_pens',JSON.stringify(pens));
   if(scorers)store.set('wc26_scorers',JSON.stringify(Object.values(scorers)));
   store.set('wc26_last_update',new Date().toISOString());
   return {added,updated,live,scorerCount:scorers?Object.values(scorers).length:null};
@@ -794,13 +812,16 @@ function renderBracket(){
     const c=DATA.roundColors[rnd];
     let cards=ms.map(m=>{
       const lab=m.label.split(' vs ');const sd=koSides(m);const r=effResult(m.n);
-      let wName=null;if(r&&r[0]!==r[1]){wName=r[0]>r[1]?sd[0]:sd[1];}
+      const wi=koWinIdx(m.n,r);const p=r?penOf(m.n):null;
+      const wName=wi===null?null:sd[wi];
       const sb=r?`<span class="bscore">${r[0]}</span>`:`<span class="bscore empty">–</span>`;
       const sb2=r?`<span class="bscore">${r[1]}</span>`:`<span class="bscore empty">–</span>`;
+      const penNote=p?`<div class="bpens">${p[0]}–${p[1]} on penalties</div>`:'';
       return `<div class="bc" style="border-left-color:${c}">
         <div class="bt">#${m.n} · ${m.dl}<span class="v">${m.time} CT</span></div>
         <div style="display:flex;align-items:center">${bracketSide(sd[0],lab[0],wName)}${sb}</div>
         <div style="display:flex;align-items:center">${bracketSide(sd[1],lab[1],wName)}${sb2}</div>
+        ${penNote}
         <div class="bvenue">${esc(m.stadium)} · ${esc(m.city)}</div>
       </div>`;
     }).join('');
@@ -874,12 +895,15 @@ function koMini(m){
   else top=`<span class="mtime">${m.time} <span class="tz">CT</span></span>`;
   if(sd[0]||sd[1]){
     // real teams known — render a proper matchup row
-    let scoreEl;
-    if(r){const ho=r[0]>r[1]?'win':(r[0]<r[1]?'loss':''),ao=r[1]>r[0]?'win':(r[1]<r[0]?'loss':'');
-      scoreEl=`<div class="scorebox"><span class="sc">${r[0]}</span><span class="dash">–</span><span class="sc">${r[1]}</span></div>`;
-      var H=ho,Aa=ao;}
-    else if(lv){scoreEl=`<div class="scorebox live"><span class="sc">${lv.score[0]}</span><span class="dash">–</span><span class="sc">${lv.score[1]}</span></div>`;var H='',Aa='';}
-    else {scoreEl=`<span class="vs">vs</span>`;var H='',Aa='';}
+    let scoreEl,H='',Aa='';
+    if(r){
+      const wi=koWinIdx(m.n,r);const p=penOf(m.n);
+      H=wi===0?'win':(wi===1?'loss':'');Aa=wi===1?'win':(wi===0?'loss':'');
+      const penHTML=p?`<div class="penline">${p[0]}–${p[1]} pens</div>`:'';
+      scoreEl=`<div class="scorewrap"><div class="scorebox"><span class="sc">${r[0]}</span><span class="dash">–</span><span class="sc">${r[1]}</span></div>${penHTML}</div>`;
+    }
+    else if(lv){scoreEl=`<div class="scorebox live"><span class="sc">${lv.score[0]}</span><span class="dash">–</span><span class="sc">${lv.score[1]}</span></div>`;}
+    else {scoreEl=`<span class="vs">vs</span>`;}
     const sideHTML=(t,tok,cls)=>t?`<div class="side ${cls}">${fl(t)}<span class="tn">${esc(t)}</span></div>`
                                  :`<div class="side ${cls}"><span class="tn" style="color:var(--mut);font-weight:600;font-size:11px">${esc(tok)}</span></div>`;
     body=`<div class="row">${sideHTML(sd[0],lab[0],H)}${scoreEl}${sideHTML(sd[1],lab[1],'r '+Aa)}</div>`;
